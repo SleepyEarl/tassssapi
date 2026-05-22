@@ -50,4 +50,17 @@ app.patch('/api/tasks/:id/toggle', async (req, res) => {
   res.json({ success: true, data: task });
 });
 
-// ... (keep the rest of your helper logic)
+app.post('/api/ai/categorize', (req, res) => {
+  const { title } = req.body;
+  
+  let suggestedCategory = 'Personal'; // Default
+  const lowerTitle = title.toLowerCase();
+
+  if (lowerTitle.includes('work') || lowerTitle.includes('meeting') || lowerTitle.includes('email')) {
+    suggestedCategory = 'Work';
+  } else if (lowerTitle.includes('exam') || lowerTitle.includes('study') || lowerTitle.includes('project')) {
+    suggestedCategory = 'School';
+  }
+
+  res.json({ success: true, category: suggestedCategory });
+});
