@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- MONGODB CONNECTION ---
-mongoose.connect('mongodb+srv://admin:admin123@cluster0.pkknnfk.mongodb.net/taskmanager?appName=Cluster0')
+mongoose.connect('mongodb://localhost:27017/taskdb')
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('DB Connection Error:', err));
 
