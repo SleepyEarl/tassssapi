@@ -9,7 +9,7 @@ app.use(express.json());
 
 // --- MONGODB CONNECTION ---
 // Use environment variable for deployment, or fallback to local
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/taskdb';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://admin:admin123@cluster0.pkknnfk.mongodb.net/?appName=Cluster0';
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('DB Connection Error:', err));
