@@ -1,144 +1,53 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose'); // Add this
 
 const app = express();
-const PORT = 3000;
-
 app.use(cors());
 app.use(express.json());
 
-// --- In-memory store ---
-let tasks = [];
+// --- MONGODB CONNECTION ---
+mongoose.connect('mongodb+srv://admin:admin123@cluster0.pkknnfk.mongodb.net/taskmanager?appName=Cluster0')
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('DB Connection Error:', err));
 
-let categories = [
-  { id: uuidv4(), name: 'Work', color: '#4f86f7' },
-  { id: uuidv4(), name: 'Personal', color: '#f7a44f' },
-  { id: uuidv4(), name: 'School', color: '#6fcf6f' },
-  { id: uuidv4(), name: 'Errands', color: '#f76f6f' },
-];
+// --- TASK SCHEMA ---
+const TaskSchema = new mongoose.Schema({
+  title: String,
+  completed: { type: Boolean, default: false },
+  categoryId: String,
+  createdAt: { type: Date, default: Date.now }
+});
 
-// --- MICROSERVICE URL ---
-const NOTIF_SERVICE_URL = 'http://localhost:4000/notify';
-
-// --- helper: send notification ---
-async function pushNotification(type, message) {
-  try {
-    await axios.post(NOTIF_SERVICE_URL, {
-      type,
-      message,
-    });
-  } catch (err) {
-    console.log('Notification service failed');
-  }
-}
+const Task = mongoose.model('Task', TaskSchema);
 
 // --- ROUTES ---
 
 // GET tasks
-app.get('/api/tasks', (req, res) => {
-  let result = [...tasks];
-
-  const { search, category } = req.query;
-
-  if (search) {
-    result = result.filter((t) =>
-      t.title.toLowerCase().includes(search.toLowerCase())
-    );
-  }
-
-  if (category && category !== 'All') {
-    result = result.filter((t) => t.categoryId === category);
-  }
-
-  res.json({ success: true, data: result });
+app.get('/api/tasks', async (req, res) => {
+  const tasks = await Task.find();
+  res.json({ success: true, data: tasks });
 });
 
 // CREATE task
 app.post('/api/tasks', async (req, res) => {
   const { title, categoryId } = req.body;
-
-  if (!title) {
-    return res.status(400).json({
-      success: false,
-      message: 'Title is required',
-    });
-  }
-
-  const task = {
-    id: uuidv4(),
-    title: title.trim(),
-    completed: false,
-    categoryId: categoryId || null,
-    createdAt: new Date().toISOString(),
-  };
-
-  tasks.push(task);
-
+  const task = new Task({ title, categoryId });
+  await task.save();
+  
   await pushNotification('add', `Task added: "${task.title}"`);
-
   res.status(201).json({ success: true, data: task });
 });
 
 // TOGGLE task
 app.patch('/api/tasks/:id/toggle', async (req, res) => {
-  const task = tasks.find((t) => t.id === req.params.id);
-
-  if (!task) {
-    return res.status(404).json({
-      success: false,
-      message: 'Task not found',
-    });
-  }
-
+  const task = await Task.findById(req.params.id);
   task.completed = !task.completed;
-
-  const state = task.completed ? 'completed' : 'pending';
-
-  await pushNotification('status', `Task marked as ${state}`);
-
+  await task.save();
+  
+  await pushNotification('status', `Task marked as ${task.completed ? 'completed' : 'pending'}`);
   res.json({ success: true, data: task });
 });
 
-// DELETE task
-app.delete('/api/tasks/:id', async (req, res) => {
-  const index = tasks.findIndex((t) => t.id === req.params.id);
-
-  if (index === -1) {
-    return res.status(404).json({
-      success: false,
-      message: 'Task not found',
-    });
-  }
-
-  const removed = tasks.splice(index, 1)[0];
-
-  await pushNotification('delete', `Deleted task: ${removed.title}`);
-
-  res.json({ success: true, message: 'Deleted' });
-});
-
-// GET categories
-app.get('/api/categories', (req, res) => {
-  res.json({ success: true, data: categories });
-});
-
-// GET stats
-app.get('/api/stats', (req, res) => {
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.completed).length;
-
-  res.json({
-    success: true,
-    data: {
-      total,
-      completed,
-      pending: total - completed,
-    },
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`Task Service running on http://localhost:${PORT}`);
-});
+// ... (keep the rest of your helper logic)
